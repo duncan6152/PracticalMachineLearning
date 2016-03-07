@@ -17,7 +17,7 @@ The goals are:
 
 * to use the model to predict the classe of 20 different test cases.
 
-This report was produced using Windows 8.1, RStudio (32 bit) and Knit HTML.
+This report was produced using Windows 8.1, RStudio (32 bit), Knit HTML and git.
 
 ## Examination of the data 
 The training and test data files were downloaded (ref [2]) and are assumed to be in local storage as pml-training.csv and pml-testing.csv.
@@ -71,66 +71,69 @@ testAcc <- testAcc[,-3]
 ``` 
 
 ## Development of the prediction model 
-Linear discriminant analysis (lda) finds linear combinations of the original variables (as in pca) that identify the "classe" groups, Ref[3].  
-In comparison to PCA (an unsupervised learning technique not using class information) LDA is a supervised technique (uses class information), but both provide for dimensionality reduction  Ref[4]
 
-### Model using Linear discriminant analysis "lda"
-```{r lda_model, echo=TRUE, fig.width=4, fig.height=3}
 
-modlda <- train(classe~., data=trainAcc, method="lda")
 
-plda <- predict(modlda,testAcc)
-nplda <- summary(plda)
-# predicted number in each group
-plot(plda)
+### Model using randomForest package
+
+```{r Forest_model, echo=TRUE, fig.width=4, fig.height=3} 
+
+# Trial of randomForest
+library(randomForest)
+set.seed(15651)
+
+modFit <- randomForest(classe ~ ., data=trainAcc)
+
+# The predictions for the test data
+prf <- predict(modFit,testAcc)
+plot(prf)
 ```
 
 #### Resampling, Accuracy and Test Predictions
 
 ```{r test_results, echo=TRUE, eval=TRUE}
 
-# Resampling and Accuracy for the lda model
-modlda
+# Resampling, Accuracy, and confusion matrix
 
-# The test predictions for the lda method were
-plda
+modFit
+
+# The test predictions
+prf
 
 ```
 
 ## Investigation of other models
-The lda model was checked with and without the correlated variables.  Initially 3 highly correlated variables were found (cor>0.9) which would bias the predictions so two were removed. 
+The data was checked for correlated variables.  Initially 3 highly correlated variables were found (cor>0.9) which would bias the predictions so two were removed. 
 
-A randomForest model was tried, initially with caret/train/rf but was found to be very slow and crashed or ran out of memory.  
-randomForest (see below) and rpart were also trialed and gave results.  
+A randomForest model was initially tried with caret/train/rf but was found to be very slow and crashed or ran out of memory.  
 
-```{r Forest_model, echo=TRUE,eval=FALSE}
-# Trial of randomForest
-library(randomForest)
-set.seed(15651)
-modFit <- randomForest(classe ~ ., data=trainAcc)
-print(modFit$confusion)
-predict(modFit,testAcc)
+lda and rpart were also trialed and gave different results.  Finally a randomForest model was selected and gave good results on the test data. 
+
+Linear discriminant analysis (lda) finds linear combinations of the original variables (as in pca) that identify the "classe" groups.  It performed poorly on the test data.    The code for lda follows:
+
+```{r lda_model, echo=TRUE, eval=FALSE}
+modlda <- train(classe~., data=trainAcc, method="lda")
+plda <- predict(modlda,testAcc)
 ```
 
 ### cross validation
-Separate Training and testing data were provided.  Highly correlated variables were reduced to one.  lda used Resampling:Bootstrapped as seen above 
-
+Separate Training and testing data were provided.
+Highly correlated variables were reduced to one.
+randomForest created multiple trees with an OOB error rate of  5.55%.
 
 ### Rational for choices made
 The problem seemed to relate to accelerations of sensors so the variables were pruned to these.  No problems were identified with NAs but some variables were highly correlated so were further pruned.
 
 The problem was identified as a classification with 5 outcomes A - E so binary models were discounted.  
-Tree methods were considered but caret/rf gave problems.  
-Initial experiments identified caret/lda as being simple to set up so this was chosen.  Later randomForest and rpart were tried and also worked.
+Tree methods were considered but caret/rf gave problems.  Later randomForest was chosen. 
 
-
+Initial experiments identified caret/lda as being simple to set up but it gave low accuracy.  It was replaced by randomForest.  rpart was also trialed.
 
 ## Conclusion
-Both methods shown gave different results on the test data. The differences have not been resolved.
+Both lda and randomForest methods shown gave different results on the test data.  lda had a low accuracy. (Choosing the model based on the results of the test data is clearly overfitting!)
+Both were easy to use at an elementary level but reading the documentation and selecting options for each proved difficult.
 
-The use of caret/rf appears unsuited for student courses due to time and memory problems but randomForest seems ok.
-
-The accuracy figures for both methods need further improvement.
+The use of caret/rf appears unsuited for student courses due to time and memory problems but randomForest was ok.
 
 
 ### Reference
@@ -142,7 +145,4 @@ The accuracy figures for both methods need further improvement.
   https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
   https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
   
-[3] http://little-book-of-r-for-multivariate-analysis.readthedocs.org/en/latest/src/multivariateanalysis.html
-
-[4] https://tgmstat.wordpress.com/2014/01/15/computing-and-visualizing-lda-in-r/
 ```    
